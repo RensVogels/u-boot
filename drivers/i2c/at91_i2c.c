@@ -113,6 +113,29 @@ static int at91_i2c_xfer(struct udevice *dev, struct i2c_msg *msg, int nmsgs)
 	bool is_read;
 	u32 int_addr_flag = 0;
 	int ret = 0;
+	
+	#if defined(CONFIG_SYS_BOARD) && defined(CONFIG_I2C_EEPROM)
+		/* 
+		 * On the sama5d4_xplained the AT24MAC402 is read for the MAC address.
+		 * The EUI-48 value is stored in register 0x9A - 0x9F and only accessible through i2c address 0x5C.
+		 *
+		 * To identify if this IC is attached and accessible, i2c probe is used.
+		 * i2c probe will verify an i2c address when a response has been received.
+		 * A response is requested for register address NULL inside the i2c device.
+		 * Register NULL for AT24MAC402 is accessible trough i2c address 0x54, therefor 0x5C will not be found.
+		 * When the i2c device can not be found uclass_first_device_err(UCLASS_I2C_EEPROM, &dev) will return an error value.
+		 */
+		if(strcmp(CONFIG_SYS_BOARD, "sama5d4_xplained") == 0)
+		{
+			if(devfdt_get_addr(dev) == 0xF8014000)
+			{
+				if(m_start->addr == 0x5C)
+				{
+					m_start->buf[0] = 0x9A;
+				}
+			}
+		}
+	#endif
 
 	if (nmsgs == 2) {
 		int internal_address = 0;
